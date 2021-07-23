@@ -18,8 +18,8 @@ get_ipv4_dst(struct rte_mbuf *pkt) {
                 rte_rwlock_init(&data->lock);
                 rte_ring_enqueue(container_init_ring, (void *)key);
         } else if (data->dest > 0) {
-                printf("\n[Sending non-unique] Src %d:%d Dst %d:%d\n", key->src_addr, key->src_port, key->dst_addr,
-                       key->dst_port);
+                // printf("\n[Sending non-unique] Src %d:%d Dst %d:%d\n", key->src_addr, key->src_port, key->dst_addr,
+                //        key->dst_port);
         }
         return data;
 }
@@ -32,7 +32,7 @@ print_key(struct rte_mbuf *pkt) {
         if (ret < 0)
                 return;
 
-        printf("Src %d:%d Dst %d:%d\n", key.src_addr, key.src_port, key.dst_addr, key.dst_port);
+        // printf("Src %d:%d Dst %d:%d\n", key.src_addr, key.src_port, key.dst_addr, key.dst_port);
 }
 
 int
@@ -289,9 +289,9 @@ dequeue_and_free_buffer_map(struct onvm_ft_ipv4_5tuple *key, int tx_fd, int rx_f
 
         int i = 0;
         // write buffered packets
-        printf("\n[Sending new flow] Src %d:%d Dst %d:%d\n", key->src_addr, key->src_port, key->dst_addr,
-               key->dst_port);
-        printf("Container RX: %d and TX: %d\n", tx_fd, rx_fd);
+        // printf("\n[Sending new flow] Src %d:%d Dst %d:%d\n", key->src_addr, key->src_port, key->dst_addr,
+        //        key->dst_port);
+        // printf("Container RX: %d and TX: %d\n", tx_fd, rx_fd);
         while (i < data->num_buffered) {
                 write_packet(tx_fd, data->buffer[i]);
                 i++;
