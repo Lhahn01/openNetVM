@@ -143,6 +143,24 @@ print_stats(__attribute__((unused)) struct onvm_nf_local_ctx *nf_local_ctx) {
 }
 
 /*
+ * This function prints the statistics during run time. 
+ * Displaying:
+ * 1) Number of containers
+ */
+static void 
+do_stats_display(__attribute__((unused)) struct onvm_nf_local_ctx *nf_local_ctx) {
+        const char clr[] = {27, '[', '2', 'J', '\0'};
+        const char topLeft[] = {27, '[', '1', ';', '1', 'H', '\0'};
+
+        // struct onvm_nf *nf = nf_local_ctx->nf;
+        // struct state_info *stats = (struct state_info *)nf->data;
+
+        /* Clear screen and move to top left */
+        printf("%s%s", clr, topLeft);
+        printf("Num_Running: %d\n", rte_atomic16_read(&num_running_containers));
+}
+
+/*
  * This function performs an IPV4 lookup int the hash table. Packets are then forwared to the corresponding NF.
  */
 static int
@@ -152,6 +170,10 @@ packet_handler(struct rte_mbuf *pkt, struct onvm_pkt_meta *meta,
 
         struct onvm_nf *nf = nf_local_ctx->nf;
         struct state_info *stats = (struct state_info *)nf->data;
+
+        printf("Counter: %d\n", counter);
+        printf("Print_delay: %d\n", stats->print_delay);
+        do_stats_display(nf_local_ctx);
 
         if (counter++ == stats->print_delay) {
                 print_stats(nf_local_ctx);
@@ -165,7 +187,7 @@ packet_handler(struct rte_mbuf *pkt, struct onvm_pkt_meta *meta,
                 meta->action = ONVM_NF_ACTION_DROP;
                 return 0;
         } else if (data->dest > 0) {
-                printf("Container RX: %d and TX: %d\n", data->dest, data->poll_fd);
+                // printf("Container RX: %d and TX: %d\n", data->dest, data->poll_fd);
                 write_packet(data->dest, pkt);
         } else {
                 if (data->num_buffered < 2) {
