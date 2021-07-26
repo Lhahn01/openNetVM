@@ -179,9 +179,6 @@ packet_handler(struct rte_mbuf *pkt, struct onvm_pkt_meta *meta,
         struct state_info *stats = (struct state_info *)nf->data;
 
         // TESTING: ************************
-        // printf("Counter: %d\n", counter);
-        // printf("Print_delay: %d\n", stats->print_delay);
-
         if (counter++ == stats->print_delay) {
                 print_stats(nf_local_ctx);
                 counter = 0;
