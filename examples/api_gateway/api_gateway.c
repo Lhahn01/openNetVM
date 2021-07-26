@@ -157,7 +157,12 @@ do_stats_display(__attribute__((unused)) struct onvm_nf_local_ctx *nf_local_ctx)
 
         /* Clear screen and move to top left */
         printf("%s%s", clr, topLeft);
-        printf("Num_Running: %d\n", rte_atomic16_read(&num_running_containers));
+
+        // Printing total & indivdual containers
+        printf("Total Running Containers: %d\n", rte_atomic16_read(&num_running_containers));
+        for (int i = 0; i < rte_atomic16_read(&num_running_containers); i++) {
+                printf("Container %d\n", i);
+        }
 }
 
 /*
