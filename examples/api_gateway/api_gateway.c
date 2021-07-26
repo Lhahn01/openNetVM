@@ -148,9 +148,10 @@ print_stats(__attribute__((unused)) struct onvm_nf_local_ctx *nf_local_ctx) {
  * 1) Number of containers
  */
 static void 
-do_stats_display(__attribute__((unused)) struct onvm_nf_local_ctx *nf_local_ctx) {
+stats_display(__attribute__((unused)) struct onvm_nf_local_ctx *nf_local_ctx) {
         const char clr[] = {27, '[', '2', 'J', '\0'};
         const char topLeft[] = {27, '[', '1', ';', '1', 'H', '\0'};
+        
 
         // struct onvm_nf *nf = nf_local_ctx->nf;
         // struct state_info *stats = (struct state_info *)nf->data;
@@ -161,7 +162,7 @@ do_stats_display(__attribute__((unused)) struct onvm_nf_local_ctx *nf_local_ctx)
         // Printing total & indivdual containers
         printf("Total Running Containers: %d\n", rte_atomic16_read(&num_running_containers));
         for (int i = 0; i < rte_atomic16_read(&num_running_containers); i++) {
-                printf("Container %d\n", i);
+                printf("Container %d:\n", i);
         }
 }
 
@@ -172,18 +173,26 @@ static int
 packet_handler(struct rte_mbuf *pkt, struct onvm_pkt_meta *meta,
                __attribute__((unused)) struct onvm_nf_local_ctx *nf_local_ctx) {
         static uint32_t counter = 0;
+        static uint32_t pot = 0;
 
         struct onvm_nf *nf = nf_local_ctx->nf;
         struct state_info *stats = (struct state_info *)nf->data;
 
-        printf("Counter: %d\n", counter);
-        printf("Print_delay: %d\n", stats->print_delay);
-        do_stats_display(nf_local_ctx);
+        // TESTING: ************************
+        // printf("Counter: %d\n", counter);
+        // printf("Print_delay: %d\n", stats->print_delay);
 
         if (counter++ == stats->print_delay) {
                 print_stats(nf_local_ctx);
                 counter = 0;
         }
+
+        if (pot++ == 100) {
+                stats_display(nf_local_ctx);
+                pot = 0; 
+        }
+
+        // ******************************
 
         struct data *data;
         data = get_ipv4_dst(pkt);
