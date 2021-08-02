@@ -177,6 +177,8 @@ struct data {
         struct rte_mbuf *buffer[2];
         uint8_t num_buffered;
         rte_rwlock_t lock;
+        int cont_idx;
+        int pkts;
 };
 
 enum {

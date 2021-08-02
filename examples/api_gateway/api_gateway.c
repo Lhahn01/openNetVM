@@ -65,6 +65,9 @@
 
 #define NF_TAG "api_gateway"
 
+// Container's index
+int cont_index = 0; 
+
 /* Print a usage message. */
 static void
 usage(const char *progname) {
@@ -147,24 +150,24 @@ print_stats(__attribute__((unused)) struct onvm_nf_local_ctx *nf_local_ctx) {
  * Displaying:
  * 1) Number of containers
  */
-static void 
-stats_display(__attribute__((unused)) struct onvm_nf_local_ctx *nf_local_ctx) {
-        const char clr[] = {27, '[', '2', 'J', '\0'};
-        const char topLeft[] = {27, '[', '1', ';', '1', 'H', '\0'};
+// static void 
+// stats_display(__attribute__((unused)) struct onvm_nf_local_ctx *nf_local_ctx) {
+//         // const char clr[] = {27, '[', '2', 'J', '\0'};
+//         // const char topLeft[] = {27, '[', '1', ';', '1', 'H', '\0'};
         
 
-        // struct onvm_nf *nf = nf_local_ctx->nf;
-        // struct state_info *stats = (struct state_info *)nf->data;
+//         // struct onvm_nf *nf = nf_local_ctx->nf;
+//         // struct state_info *stats = (struct state_info *)nf->data;
 
-        /* Clear screen and move to top left */
-        printf("%s%s", clr, topLeft);
+//         /* Clear screen and move to top left */
+//         // printf("%s%s", clr, topLeft);
 
-        // Printing total & indivdual containers
-        printf("Total Running Containers: %d\n", rte_atomic16_read(&num_running_containers));
-        for (int i = 0; i < rte_atomic16_read(&num_running_containers); i++) {
-                printf("Container %d:\n", i);
-        }
-}
+//         // Printing total & indivdual containers
+//         printf("Total Running Containers: %d\n", rte_atomic16_read(&num_running_containers));
+//         // for (int i = 0; i < rte_atomic16_read(&num_running_containers); i++) {
+//         //         printf("Container %d:\n", i);
+//         // }
+// }
 
 /*
  * This function performs an IPV4 lookup int the hash table. Packets are then forwared to the corresponding NF.
@@ -173,21 +176,22 @@ static int
 packet_handler(struct rte_mbuf *pkt, struct onvm_pkt_meta *meta,
                __attribute__((unused)) struct onvm_nf_local_ctx *nf_local_ctx) {
         static uint32_t counter = 0;
-        static uint32_t pot = 0;
+        // static uint32_t pot = 0;
 
         struct onvm_nf *nf = nf_local_ctx->nf;
         struct state_info *stats = (struct state_info *)nf->data;
 
         // TESTING: ************************
+        // stats->print_delay = 1,000,000
         if (counter++ == stats->print_delay) {
                 print_stats(nf_local_ctx);
                 counter = 0;
         }
 
-        if (pot++ == 100) {
-                stats_display(nf_local_ctx);
-                pot = 0; 
-        }
+        // if (pot++ == 100) {
+        //         stats_display(nf_local_ctx);
+        //         pot = 0; 
+        // }
 
         // ******************************
 
@@ -200,12 +204,24 @@ packet_handler(struct rte_mbuf *pkt, struct onvm_pkt_meta *meta,
         } else if (data->dest > 0) {
                 // printf("Container RX: %d and TX: %d\n", data->dest, data->poll_fd);
                 write_packet(data->dest, pkt);
+                if (data->cont_idx == -1) {
+                        data->cont_idx = cont_index;
+                        cont_index++;
+                }
+                data->pkts++;
+                printf("data->cont_idx: %d\n", data->cont_idx);
         } else {
                 if (data->num_buffered < 2) {
                         rte_rwlock_write_lock(&data->lock);
                         data->buffer[data->num_buffered] = pkt;
                         data->num_buffered++;
                         rte_rwlock_write_unlock(&data->lock);
+                        if (data->cont_idx == -1) {
+                                data->cont_idx = cont_index;
+                                cont_index++;
+                        }
+                        data->pkts++;
+                        printf("data->cont_idx: %d\n", data->cont_idx);
                 } else {
                         meta->action = ONVM_NF_ACTION_DROP;
                         return 0;

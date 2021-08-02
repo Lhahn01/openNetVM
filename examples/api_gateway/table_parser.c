@@ -14,6 +14,8 @@ get_ipv4_dst(struct rte_mbuf *pkt) {
         if (tbl_index < 0) {
                 onvm_ft_add_key((struct onvm_ft *)em_tbl, key, (char **)&data);
                 data->dest = 0;
+                data->cont_idx = -1;
+                data->pkts = 0; 
                 data->num_buffered = 0;
                 rte_rwlock_init(&data->lock);
                 rte_ring_enqueue(container_init_ring, (void *)key);
@@ -188,6 +190,8 @@ add_rules(void *tbl, const char *rule_path, int table_type) {
                                                 ipv4_tuple.src_addr_depth, dest);
                 }
                 data->dest = dest;
+                data->cont_idx = -1;
+                data->pkts = 0; 
                 if (tbl_index < 0)
                         rte_exit(EXIT_FAILURE, "Unable to add entry %u\n", i);
         }
