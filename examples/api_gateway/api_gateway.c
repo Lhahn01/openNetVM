@@ -152,12 +152,12 @@ print_stats(__attribute__((unused)) struct onvm_nf_local_ctx *nf_local_ctx) {
  */
 static void 
 stats_display(__attribute__((unused)) struct onvm_nf_local_ctx *nf_local_ctx) {
-        // const char clr[] = {27, '[', '2', 'J', '\0'};
-        // const char topLeft[] = {27, '[', '1', ';', '1', 'H', '\0'};
+        const char clr[] = {27, '[', '2', 'J', '\0'};
+        const char topLeft[] = {27, '[', '1', ';', '1', 'H', '\0'};
         uint64_t total_packets = 0;
 
         /* Clear screen and move to top left */
-        // printf("%s%s", clr, topLeft);
+        printf("%s%s", clr, topLeft);
 
         struct onvm_nf *nf = nf_local_ctx->nf;
         struct state_info *stats = (struct state_info *)nf->data;
@@ -173,6 +173,7 @@ stats_display(__attribute__((unused)) struct onvm_nf_local_ctx *nf_local_ctx) {
                 total_packets += stats->statistics[i];
         }
         printf("\nTotal Packets: %17" PRIu64, total_packets);
+        printf("\n\n");
 }
 
 /*
@@ -207,7 +208,6 @@ packet_handler(struct rte_mbuf *pkt, struct onvm_pkt_meta *meta,
                         cont_index++;
                 }
                 stats->statistics[data->cont_idx] = ++data->pkts;
-                stats_display(nf_local_ctx);
         } else {
                 if (data->num_buffered < 2) {
                         rte_rwlock_write_lock(&data->lock);
@@ -220,6 +220,8 @@ packet_handler(struct rte_mbuf *pkt, struct onvm_pkt_meta *meta,
                         return 0;
                 }
         }
+        // Display statistics: # of containers and packets
+        stats_display(nf_local_ctx);
 
         meta->destination = data->dest;
         stats->statistics[data->dest]++;
