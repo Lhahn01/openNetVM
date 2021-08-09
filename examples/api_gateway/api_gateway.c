@@ -149,16 +149,16 @@ print_stats(__attribute__((unused)) struct onvm_nf_local_ctx *nf_local_ctx) {
  * This function prints the statistics during run time. 
  * Displaying:
  * 1) Number of containers
+ * 2) Number of packets received in each container
  */
 static void 
 stats_display(__attribute__((unused)) struct onvm_nf_local_ctx *nf_local_ctx) {
-        const char clr[] = {27, '[', '2', 'J', '\0'};
-        const char topLeft[] = {27, '[', '1', ';', '1', 'H', '\0'};
+        // const char clr[] = {27, '[', '2', 'J', '\0'};
+        // const char topLeft[] = {27, '[', '1', ';', '1', 'H', '\0'};
         uint64_t total_packets = 0;
 
         /* Clear screen and move to top left */
-        printf("%s%s", clr, topLeft);
-
+        // printf("%s%s", clr, topLeft);
         struct onvm_nf *nf = nf_local_ctx->nf;
         struct state_info *stats = (struct state_info *)nf->data;
 
@@ -208,6 +208,9 @@ packet_handler(struct rte_mbuf *pkt, struct onvm_pkt_meta *meta,
                         cont_index++;
                 }
                 stats->statistics[data->cont_idx] = ++data->pkts;
+                printf("data->dest: %d\n", data->dest);
+                printf("container number: %d\n", data->cont_idx);
+                printf("number of packets: %d\n", data->pkts);
         } else {
                 if (data->num_buffered < 2) {
                         rte_rwlock_write_lock(&data->lock);
