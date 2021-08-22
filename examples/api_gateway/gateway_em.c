@@ -33,6 +33,7 @@ enqueue_mbuf(struct rte_mbuf *pkt) {
         if (true) {
                 return;
         }
+        printf("testing\n");
         data = get_ipv4_dst(pkt);
         if (data->dest == 0) {
                 // TODO: figure out if this is a malicious scenario

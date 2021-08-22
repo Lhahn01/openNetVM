@@ -116,15 +116,15 @@ parse_app_args(int argc, char *argv[], const char *progname, struct state_info *
  */
 static void
 print_stats(__attribute__((unused)) struct onvm_nf_local_ctx *nf_local_ctx) {
-        const char clr[] = {27, '[', '2', 'J', '\0'};
-        const char topLeft[] = {27, '[', '1', ';', '1', 'H', '\0'};
+        // const char clr[] = {27, '[', '2', 'J', '\0'};
+        // const char topLeft[] = {27, '[', '1', ';', '1', 'H', '\0'};
         uint64_t total_packets = 0;
 
         struct onvm_nf *nf = nf_local_ctx->nf;
         struct state_info *stats = (struct state_info *)nf->data;
 
         /* Clear screen and move to top left */
-        printf("%s%s", clr, topLeft);
+        // printf("%s%s", clr, topLeft);
 
         printf("\nStatistics ====================================");
         int i;
@@ -136,11 +136,11 @@ print_stats(__attribute__((unused)) struct onvm_nf_local_ctx *nf_local_ctx) {
 
                 total_packets += stats->statistics[i];
         }
-        printf(
-            "\nAggregate statistics ==============================="
-            "\nTotal packets forwarded: %17" PRIu64 "\nPackets dropped: %18" PRIu64,
-            total_packets, stats->packets_dropped);
-        printf("\n====================================================\n");
+        // printf(
+        //     "\nAggregate statistics ==============================="
+        //     "\nTotal packets forwarded: %17" PRIu64 "\nPackets dropped: %18" PRIu64,
+        //     total_packets, stats->packets_dropped);
+        // printf("\n====================================================\n");
 
         printf("\n\n");
 }
@@ -151,30 +151,30 @@ print_stats(__attribute__((unused)) struct onvm_nf_local_ctx *nf_local_ctx) {
  * 1) Number of containers
  * 2) Number of packets received in each container
  */
-static void 
-stats_display(__attribute__((unused)) struct onvm_nf_local_ctx *nf_local_ctx) {
-        // const char clr[] = {27, '[', '2', 'J', '\0'};
-        // const char topLeft[] = {27, '[', '1', ';', '1', 'H', '\0'};
-        uint64_t total_packets = 0;
+// static void 
+// stats_display(__attribute__((unused)) struct onvm_nf_local_ctx *nf_local_ctx) {
+//         // const char clr[] = {27, '[', '2', 'J', '\0'};
+//         // const char topLeft[] = {27, '[', '1', ';', '1', 'H', '\0'};
+//         uint64_t total_packets = 0;
 
-        /* Clear screen and move to top left */
-        // printf("%s%s", clr, topLeft);
-        struct onvm_nf *nf = nf_local_ctx->nf;
-        struct state_info *stats = (struct state_info *)nf->data;
+//         /* Clear screen and move to top left */
+//         // printf("%s%s", clr, topLeft);
+//         struct onvm_nf *nf = nf_local_ctx->nf;
+//         struct state_info *stats = (struct state_info *)nf->data;
 
-        // Printing total & indivdual containers
-        printf("\nTotal Running Containers: %d", rte_atomic16_read(&num_running_containers));
-        for (int i = 0; i < rte_atomic16_read(&num_running_containers); i++) {
-                printf(
-                    "\nStatistics for NF Container %d ------------------------------"
-                    "\nPackets forwarded to: %20" PRIu64,
-                    i, stats->statistics[i]);
+//         // Printing total & indivdual containers
+//         printf("\nTotal Running Containers: %d", rte_atomic16_read(&num_running_containers));
+//         for (int i = 0; i < rte_atomic16_read(&num_running_containers); i++) {
+//                 printf(
+//                     "\nStatistics for NF Container %d ------------------------------"
+//                     "\nPackets forwarded to: %20" PRIu64,
+//                     i, stats->statistics[i]);
 
-                total_packets += stats->statistics[i];
-        }
-        printf("\nTotal Packets: %17" PRIu64, total_packets);
-        printf("\n\n");
-}
+//                 total_packets += stats->statistics[i];
+//         }
+//         printf("\nTotal Packets: %17" PRIu64, total_packets);
+//         printf("\n\n");
+// }
 
 /*
  * This function performs an IPV4 lookup int the hash table. Packets are then forwared to the corresponding NF.
@@ -182,6 +182,7 @@ stats_display(__attribute__((unused)) struct onvm_nf_local_ctx *nf_local_ctx) {
 static int
 packet_handler(struct rte_mbuf *pkt, struct onvm_pkt_meta *meta,
                __attribute__((unused)) struct onvm_nf_local_ctx *nf_local_ctx) {
+        onvm_pkt_print(pkt);
         static uint32_t counter = 0;
 
         struct onvm_nf *nf = nf_local_ctx->nf;
@@ -200,18 +201,21 @@ packet_handler(struct rte_mbuf *pkt, struct onvm_pkt_meta *meta,
                 meta->action = ONVM_NF_ACTION_DROP;
                 return 0;
         } else if (data->dest > 0) {
-                // printf("Container RX: %d and TX: %d\n", data->dest, data->poll_fd);
+                printf("Packet for assigned flow\n");
+                printf("Container RX: %d and TX: %d\n", data->dest, data->poll_fd);
                 // printf("data->dest: %d\n", data->dest);
                 write_packet(data->dest, pkt);
                 if (data->cont_idx == -1) {
                         data->cont_idx = cont_index;
                         cont_index++;
                 }
-                stats->statistics[data->cont_idx] = ++data->pkts;
-                printf("data->dest: %d\n", data->dest);
-                printf("container number: %d\n", data->cont_idx);
-                printf("number of packets: %d\n", data->pkts);
+                // stats->statistics[data->cont_idx] = ++data->pkts;
+                meta->destination = data->dest;
+                stats->statistics[data->dest]++;
+                meta->action = ONVM_NF_ACTION_TONF;
         } else {
+                printf("Packet for unassigned flow\n");
+                printf("Container RX: %d and Num_buffered: %d\n", data->dest, data->num_buffered);
                 if (data->num_buffered < 2) {
                         rte_rwlock_write_lock(&data->lock);
                         data->buffer[data->num_buffered] = pkt;
@@ -222,13 +226,13 @@ packet_handler(struct rte_mbuf *pkt, struct onvm_pkt_meta *meta,
                         meta->action = ONVM_NF_ACTION_DROP;
                         return 0;
                 }
+                stats->statistics[data->dest]++;
+                printf("\n\n");
+                return 1;
         }
         // Display statistics: # of containers and packets
-        stats_display(nf_local_ctx);
-
-        meta->destination = data->dest;
-        stats->statistics[data->dest]++;
-        meta->action = ONVM_NF_ACTION_TONF;
+        // stats_display(nf_local_ctx);
+        printf("\n\n");
         return 0;
 }
 
