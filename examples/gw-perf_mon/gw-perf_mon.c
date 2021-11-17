@@ -59,7 +59,7 @@
 #include "onvm_nflib.h"
 #include "onvm_pkt_helper.h" 
 
-#define NF_TAG "flow_tracker"
+#define NF_TAG "gw-perf_mon"
 #define TBL_SIZE 100
 #define EXPIRE_TIME 5
 
@@ -79,9 +79,13 @@ struct flow_stats {
         uint64_t first_pkt_cycles;
         uint64_t last_pkt_cycles;
         int is_active;
+        char url[64];
 };
 
 struct state_info *state_info;
+
+/* String to search within packet payload*/
+const char *search_phrase = "GET"; // NOTE: Weird way of how the packet is displayed when I printed out each packet converted to const char *
 
 /*
  * Prints application arguments
@@ -129,7 +133,7 @@ parse_app_args(int argc, char *argv[], const char *progname) {
         }
 
         if (!dst_flag) {
-                RTE_LOG(INFO, APP, "Flow Tracker NF requires a destination NF service ID with the -d flag \n");
+                RTE_LOG(INFO, APP, "Performance Monitor NF requires a destination NF service ID with the -d flag \n");
                 return -1;
         }
 
@@ -212,6 +216,7 @@ do_stats_display(struct state_info *state_info) {
                 printf("Key information:\n");
                 _onvm_ft_print_key(key);
                 printf("Packet count: %d\n", data->pkt_count);
+                printf("URL requested: %s\n", data->url);
                 printf("Time difference: %ld sec\n\n", (data->last_pkt_cycles - data->first_pkt_cycles) / rte_get_timer_hz());
         }
 }
@@ -248,6 +253,40 @@ table_add_entry(struct onvm_ft_ipv4_5tuple *key, struct state_info *state_info) 
         return 0;
 }
 
+static void
+url_lookup (struct rte_mbuf *pkt, struct flow_stats *data) {
+        int tcp_pkt;
+        uint8_t *pkt_data;
+        char *search_match;
+
+        tcp_pkt = onvm_pkt_is_tcp(pkt);
+        pkt_data = NULL;
+
+        // If it is not a tcp packet, just let it pass without any processing
+        if (!tcp_pkt) {
+                return;
+        }
+
+        pkt_data = rte_pktmbuf_mtod_offset(pkt, uint8_t * , sizeof(struct rte_ether_hdr) +
+                                                   sizeof(struct rte_ipv4_hdr) + sizeof(struct rte_tcp_hdr));
+
+        search_match = strstr((const char *) pkt_data, search_phrase);
+
+        if (search_match) {
+                printf("search_match: %s\n", search_match);
+                // Get the URL requested
+                char *get_url = strstr(search_match, " ");
+                get_url = get_url + 1;
+                get_url = strtok(get_url, "\n");
+                strcpy(data->url, get_url);
+
+                // Get the host
+                // printf("TESTING\n");
+                printf("search_match: %s\n", search_match);
+                printf("get_url: %s\n", get_url);
+        }
+}
+
 /*
  * Looks up a packet hash to see if there is a matching key in the table.
  * If it finds one, it updates the metadata associated with the key entry,
@@ -273,6 +312,7 @@ table_lookup_entry(struct rte_mbuf *pkt, struct state_info *state_info) {
                 printf("Some other error occurred with the packet hashing\n");
                 return -1;
         } else {
+                url_lookup(pkt, data);
                 data->pkt_count += 1;
                 data->last_pkt_cycles = state_info->elapsed_cycles;
                 return 0;
