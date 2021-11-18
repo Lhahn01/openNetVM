@@ -85,9 +85,6 @@ struct flow_stats {
 
 struct state_info *state_info;
 
-/* String to search within packet payload*/
-const char *search_phrase = "GET"; // NOTE: Weird way of how the packet is displayed when I printed out each packet converted to const char *
-
 /*
  * Prints application arguments
  */
@@ -273,7 +270,7 @@ url_lookup (struct rte_mbuf *pkt, struct flow_stats *data) {
         pkt_data = rte_pktmbuf_mtod_offset(pkt, uint8_t * , sizeof(struct rte_ether_hdr) +
                                                    sizeof(struct rte_ipv4_hdr) + sizeof(struct rte_tcp_hdr));
 
-        url_match = strstr((const char *) pkt_data, search_phrase);
+        url_match = strstr((const char *) pkt_data, "GET"); 
         host_match = strstr((const char *) pkt_data, "Host");
 
         if (url_match) {
