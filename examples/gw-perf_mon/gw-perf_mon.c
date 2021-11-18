@@ -80,6 +80,7 @@ struct flow_stats {
         uint64_t last_pkt_cycles;
         int is_active;
         char url[64];
+        char host[64];
 };
 
 struct state_info *state_info;
@@ -217,6 +218,7 @@ do_stats_display(struct state_info *state_info) {
                 _onvm_ft_print_key(key);
                 printf("Packet count: %d\n", data->pkt_count);
                 printf("URL requested: %s\n", data->url);
+                printf("Host: %s\n", data->host);
                 printf("Time difference: %ld sec\n\n", (data->last_pkt_cycles - data->first_pkt_cycles) / rte_get_timer_hz());
         }
 }
@@ -257,7 +259,8 @@ static void
 url_lookup (struct rte_mbuf *pkt, struct flow_stats *data) {
         int tcp_pkt;
         uint8_t *pkt_data;
-        char *search_match;
+        char *url_match;
+        char *host_match;
 
         tcp_pkt = onvm_pkt_is_tcp(pkt);
         pkt_data = NULL;
@@ -270,20 +273,22 @@ url_lookup (struct rte_mbuf *pkt, struct flow_stats *data) {
         pkt_data = rte_pktmbuf_mtod_offset(pkt, uint8_t * , sizeof(struct rte_ether_hdr) +
                                                    sizeof(struct rte_ipv4_hdr) + sizeof(struct rte_tcp_hdr));
 
-        search_match = strstr((const char *) pkt_data, search_phrase);
+        url_match = strstr((const char *) pkt_data, search_phrase);
+        host_match = strstr((const char *) pkt_data, "Host");
 
-        if (search_match) {
-                printf("search_match: %s\n", search_match);
+        if (url_match) {
                 // Get the URL requested
-                char *get_url = strstr(search_match, " ");
+                char *get_url = strstr(url_match, " ");
                 get_url = get_url + 1;
                 get_url = strtok(get_url, "\n");
+                get_url = strtok(get_url, " ");
                 strcpy(data->url, get_url);
 
                 // Get the host
-                // printf("TESTING\n");
-                printf("search_match: %s\n", search_match);
-                printf("get_url: %s\n", get_url);
+                char *get_host = strstr(host_match, " ");
+                get_host = get_host + 1;
+                get_host = strtok(get_host, "\n");
+                strcpy(data->host, get_host);
         }
 }
 
