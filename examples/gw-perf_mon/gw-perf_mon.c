@@ -85,6 +85,9 @@ struct flow_stats {
 
 struct state_info *state_info;
 
+// Variable to indicate whether the request is a POST/GET
+char *request_name = NULL;
+
 /*
  * Prints application arguments
  */
@@ -115,11 +118,16 @@ parse_app_args(int argc, char *argv[], const char *progname) {
                         case 'p':
                                 state_info->print_delay = strtoul(optarg, NULL, 10);
                                 break;
+                        case 'r':
+                                request_name = strdup(optarg);
+                                break;
                         case '?':
                                 usage(progname);
                                 if (optopt == 'd')
                                         RTE_LOG(INFO, APP, "Option -%c requires an argument\n", optopt);
                                 else if (optopt == 'p')
+                                        RTE_LOG(INFO, APP, "Option -%c requires an argument\n", optopt);
+                                else if (optopt == 'r')
                                         RTE_LOG(INFO, APP, "Option -%c requires an argument\n", optopt);
                                 else
                                         RTE_LOG(INFO, APP, "Unknown option character\n");
@@ -270,7 +278,20 @@ url_lookup (struct rte_mbuf *pkt, struct flow_stats *data) {
         pkt_data = rte_pktmbuf_mtod_offset(pkt, uint8_t * , sizeof(struct rte_ether_hdr) +
                                                    sizeof(struct rte_ipv4_hdr) + sizeof(struct rte_tcp_hdr));
 
-        url_match = strstr((const char *) pkt_data, "GET"); 
+        // Depending on the user's flag of POST or GET
+        if (request_name != NULL) {
+                // TASK: CHECK IF THE USER TYPED IN THE CORRECT WORDING
+                if (strcmp(request_name, "GET") == 0 || strcmp(request_name, "POST") == 0) {
+                        url_match = strstr((const char *) pkt_data, request_name); 
+                }
+                else {
+                        rte_exit(EXIT_FAILURE, "Cannot get request type\n");
+                }
+        }
+        else {
+                url_match = strstr((const char *) pkt_data, "GET"); 
+        }
+
         host_match = strstr((const char *) pkt_data, "Host");
 
         if (url_match) {
