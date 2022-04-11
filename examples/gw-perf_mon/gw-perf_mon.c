@@ -108,7 +108,7 @@ static int
 parse_app_args(int argc, char *argv[], const char *progname) {
         int c, dst_flag = 0;
 
-        while ((c = getopt(argc, argv, "d:p:")) != -1) {
+        while ((c = getopt(argc, argv, "d:p:r:")) != -1) {
                 switch (c) {
                         case 'd':
                                 state_info->destination = strtoul(optarg, NULL, 10);
@@ -262,6 +262,7 @@ table_add_entry(struct onvm_ft_ipv4_5tuple *key, struct state_info *state_info) 
 
 static void
 url_lookup (struct rte_mbuf *pkt, struct flow_stats *data) {
+        printf("Test: %s\n", request_name);
         int tcp_pkt;
         uint8_t *pkt_data;
         char *url_match;
