@@ -79,14 +79,14 @@ struct flow_stats {
         uint64_t first_pkt_cycles;
         uint64_t last_pkt_cycles;
         int is_active;
-        char url[64];
-        char host[64];
+        char url[256];
+        char host[256];
 };
 
 struct state_info *state_info;
 
 // Variable to indicate whether the request is a POST/GET
-char *request_name = NULL;
+char *request_type = NULL;
 
 /*
  * Prints application arguments
@@ -119,7 +119,18 @@ parse_app_args(int argc, char *argv[], const char *progname) {
                                 state_info->print_delay = strtoul(optarg, NULL, 10);
                                 break;
                         case 'r':
-                                request_name = strdup(optarg);
+                                // Request type from user & making it all uppercase
+                                request_type = strdup(optarg);
+
+                                // Ensure that the user identified 'GET' or 'POST'
+                                if (request_type != NULL) {
+                                        if (strcmp(request_type, "GET") == 0 || strcmp(request_type, "POST") == 0) {
+                                                break;
+                                        }
+                                        else {
+                                                rte_exit(EXIT_FAILURE, "Cannot understand request type\n");
+                                        }
+                                }
                                 break;
                         case '?':
                                 usage(progname);
@@ -222,9 +233,9 @@ do_stats_display(struct state_info *state_info) {
                 printf("Key information:\n");
                 _onvm_ft_print_key(key);
                 printf("Packet count: %d\n", data->pkt_count);
-                printf("URL requested: %s\n", data->url);
+                printf("URL requested (%s): %s\n", request_type, data->url);
                 printf("Host: %s\n", data->host);
-                printf("Time difference: %ld sec\n\n", (data->last_pkt_cycles - data->first_pkt_cycles) / rte_get_timer_hz());
+                printf("Time difference: %f sec\n\n", (float)(data->last_pkt_cycles - data->first_pkt_cycles) / rte_get_timer_hz());
         }
 }
 
@@ -256,13 +267,16 @@ table_add_entry(struct onvm_ft_ipv4_5tuple *key, struct state_info *state_info) 
         data->first_pkt_cycles = state_info->elapsed_cycles;
         data->last_pkt_cycles = state_info->elapsed_cycles;
         data->is_active = 1;
+        data->url[0] = '\0';
         state_info->num_stored += 1;
         return 0;
 }
 
+/*
+ * Looks inside a packet to gather information regarding GET and/or POST.
+ */
 static void
 url_lookup (struct rte_mbuf *pkt, struct flow_stats *data) {
-        printf("Test: %s\n", request_name);
         int tcp_pkt;
         uint8_t *pkt_data;
         char *url_match;
@@ -279,33 +293,22 @@ url_lookup (struct rte_mbuf *pkt, struct flow_stats *data) {
         pkt_data = rte_pktmbuf_mtod_offset(pkt, uint8_t * , sizeof(struct rte_ether_hdr) +
                                                    sizeof(struct rte_ipv4_hdr) + sizeof(struct rte_tcp_hdr));
 
-        // Depending on the user's flag of POST or GET
-        if (request_name != NULL) {
-                // TASK: CHECK IF THE USER TYPED IN THE CORRECT WORDING
-                if (strcmp(request_name, "GET") == 0 || strcmp(request_name, "POST") == 0) {
-                        url_match = strstr((const char *) pkt_data, request_name); 
-                }
-                else {
-                        rte_exit(EXIT_FAILURE, "Cannot get request type\n");
-                }
-        }
-        else {
-                url_match = strstr((const char *) pkt_data, "GET"); 
+        // Ensures that if user has not requested a specific request, the default is 'GET'
+        if (request_type == NULL) {
+                request_type = strdup("GET");
         }
 
+        url_match = strstr((const char *) pkt_data, request_type); 
         host_match = strstr((const char *) pkt_data, "Host");
-
-        if (url_match) {
+        if (url_match != NULL) {
                 // Get the URL requested
-                char *get_url = strstr(url_match, " ");
-                get_url = get_url + 1;
+                char *get_url = strstr(url_match, " ") + 1;
                 get_url = strtok(get_url, "\n");
                 get_url = strtok(get_url, " ");
                 strcpy(data->url, get_url);
 
                 // Get the host
-                char *get_host = strstr(host_match, " ");
-                get_host = get_host + 1;
+                char *get_host = strstr(host_match, " ") + 1;
                 get_host = strtok(get_host, "\n");
                 strcpy(data->host, get_host);
         }
@@ -336,7 +339,9 @@ table_lookup_entry(struct rte_mbuf *pkt, struct state_info *state_info) {
                 printf("Some other error occurred with the packet hashing\n");
                 return -1;
         } else {
-                url_lookup(pkt, data);
+                if (data->url[0] == '\0') {
+                        url_lookup(pkt, data);
+                }
                 data->pkt_count += 1;
                 data->last_pkt_cycles = state_info->elapsed_cycles;
                 return 0;
