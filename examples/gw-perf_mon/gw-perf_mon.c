@@ -79,8 +79,8 @@ struct flow_stats {
         uint64_t first_pkt_cycles;
         uint64_t last_pkt_cycles;
         int is_active;
-        char url[256];
-        char host[256];
+        char url[4096];
+        char host[4096];
 };
 
 struct state_info *state_info;
